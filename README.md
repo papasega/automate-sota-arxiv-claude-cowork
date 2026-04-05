@@ -2,7 +2,7 @@
 
 > A complete tutorial on how to set up a fully automated research digest pipeline that searches ArXiv every Sunday, writes a bilingual HTML article, and updates your blog, all without writing a single line of Python or using any API key.
 
-**Author:** Papa Séga WADE: [papasegawade.com](https://papasegawade.com)
+
 **Stack:** Claude Cowork (desktop app) · Static HTML blog · GitHub Pages
 
 ---
@@ -490,6 +490,5 @@ Include bash commands at the end of the prompt that the agent runs on itself. Th
 Research reports (`docs/hf-weekly-*.md`, etc.) are useful locally but shouldn't be in your public repo. Add them to `.gitignore` before the first run.
 
 ---
-
-*Built and documented by [Papa Séga WADE](https://papasegawade.com), April 2026.*
+*Built and documented by Papa Séga WADE, webaite [papasegawade.com](https://papasegawade.com), April 2026.*
 *Research domains: NLP · Speech · Low-resource African languages · LLMs · Code-switching*
