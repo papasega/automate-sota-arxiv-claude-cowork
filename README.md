@@ -2,7 +2,7 @@
 
 > A complete tutorial on how to set up a fully automated research digest pipeline that searches ArXiv every Sunday, writes a bilingual HTML article, and updates your blog, all without writing a single line of Python or using any API key.
 
-**Author:** Papa Séga WADE: [papasegawade.com](https://papasegawade.com)
+
 **Stack:** Claude Cowork (desktop app) · Static HTML blog · GitHub Pages
 
 ---
@@ -609,5 +609,5 @@ A digest is most useful to researchers when it goes beyond the abstract. The per
 
 ---
 
-*Built and documented by [Papa Séga WADE](https://papasegawade.com), April 2026.*
+*Built and designed by [Papa Séga WADE](https://papasegawade.com), April 2026.*
 *Research domains: NLP · Speech · Low-resource African languages · LLMs · Code-switching*
