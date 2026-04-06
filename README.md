@@ -5,6 +5,8 @@
 
 **Stack:** Claude Cowork (desktop app) · Static HTML blog · GitHub Pages
 
+**The article:** [A weekly AI-generated SOTA digest](https://papasegawade.com/blog/automate-sota-arxiv-cowork)
+
 ---
 
 ![Weekly SOTA ArXiv Blog Digest](./ndapli/pipeline-sota-arxiv.png)
