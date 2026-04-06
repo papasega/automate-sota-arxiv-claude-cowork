@@ -7,7 +7,7 @@
 
 ---
 
-![Weekly SOTA ArXiv Blog Digest](./ndapli/sota-axiv-automation.png)
+![Weekly SOTA ArXiv Blog Digest](./ndapli/pipeline-sota-arxiv.png)
 
 ## Table of Contents
 
@@ -84,6 +84,8 @@ Monday morning
     │
     └── PSW: open file → review → git push ✅
 ```
+#### Summary:
+![Weekly SOTA ArXiv Blog Digest](./ndapli/sota-axiv-automation.png)
 
 ---
 
