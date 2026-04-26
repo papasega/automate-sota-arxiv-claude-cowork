@@ -24,8 +24,11 @@
 9. [How to Know if an Article Was Written](#9-how-to-know-if-an-article-was-written)
 10. [Complementary Weekly Tasks](#10-complementary-weekly-tasks)
 11. [Blog HTML Conventions the Agent Must Follow](#11-blog-html-conventions-the-agent-must-follow)
-12. [Customizing for Your Own Blog](#12-customizing-for-your-own-blog)
-13. [Full Pipeline Summary](#13-full-pipeline-summary)
+11b. [Conference Radar — Seasonal Coverage](#11b-conference-radar--seasonal-coverage)
+12. [Anti-Duplicate System — Tracking Published Papers](#12-anti-duplicate-system--tracking-published-papers)
+13. [Factual Verification — STEP 5.5](#13-factual-verification--step-55)
+14. [Customizing for Your Own Blog](#14-customizing-for-your-own-blog)
+15. [Full Pipeline Summary](#15-full-pipeline-summary)
 
 ---
 
@@ -33,12 +36,13 @@
 
 Every **Sunday at 8 PM**, an autonomous Claude agent:
 
-1. Runs **7 targeted ArXiv searches** via WebSearch for your research domains
-2. Selects the **5–8 most relevant papers** of the week
-3. Identifies the **notable model release of the week** via HuggingFace trending
-4. Generates a **complete bilingual HTML article** (French + English) with: per-paper mathematical method blocks, Python snippets, HuggingFace links, Wolof applicability scores, and a "Model of the week" section
-5. Inserts a **new card** at the top of your `blog.html` index
-6. Adds a new **sitemap.xml entry** for SEO
+1. Runs **10 permanent ArXiv + HuggingFace searches** (always active, every week)
+2. Runs **seasonal conference radar** — adds 2 targeted queries per active conference (ACL, Interspeech, NeurIPS, ICLR) based on the current month, so no high-quality accepted paper slips through
+3. Selects the **5–8 most relevant papers** of the week, tagging accepted conference papers with a `badge--conf` badge
+4. Identifies the **notable model release of the week** via HuggingFace trending
+5. Generates a **complete bilingual HTML article** (French + English) with: per-paper mathematical method blocks, Python snippets, HuggingFace links, Wolof applicability scores, conference badges, and a "Model of the week" section
+6. Inserts a **new card** at the top of your `blog.html` index
+7. Adds a new **sitemap.xml entry** for SEO
 
 On **Monday morning**, you open the generated article, review it in your browser, and run `git push` if you're satisfied. The entire research curation and writing takes zero time on your end.
 
@@ -57,37 +61,55 @@ Cowork Scheduled Task: sota-arxiv-weekly-digest
     ├── STEP 0 ── Read CLAUDE_BLOG_CONTEXT.md
     │              (site conventions, CSS classes, bilingual rules, em dash rule)
     │
-    ├── STEP 1 ── 7 × WebSearch on arxiv.org
-    │              (NLP, Speech, low-resource, African languages, LLMs...)
+    ├── STEP 1 ── 10 × permanent searches (7 ArXiv + 3 HuggingFace)
+    │              (NLP, Speech, low-resource, African languages, LLMs, LoRA...)
+    │              ArXiv = priority #1, always executed every week
     │              + WebSearch per paper to get real authors and institutions
     │
-    ├── STEP 2 ── WebSearch HuggingFace trending
+    ├── STEP 1.3 ─ Conference Radar (seasonal, ADDITIVE to STEP 1)
+    │              Check current month → add 2 queries per active conference:
+    │              · ICLR        active: January → May
+    │              · ACL / NAACL active: April → August
+    │              · Interspeech active: March → September
+    │              · EMNLP       active: July → November
+    │              · NeurIPS     active: May → December
+    │              If accepted conference paper found → add badge--conf in paper-block
+    │
+    ├── STEP 1.5 ─ WebSearch HuggingFace trending
     │              (identify the notable model release of the week)
     │
-    ├── STEP 3 ── Write blog/sota/sota-YYYY-MM-DD.html
+    ├── STEP 2 ── Write blog/sota/sota-YYYY-MM-DD.html
     │              (full bilingual article: model-of-the-week + enriched paper-blocks)
     │              (relative paths: ../../css/style.css · ../../js/main.js)
     │              (highlight.js in <head> + script init in <body>)
+    │              (badge--conf on confirmed conference papers)
     │
-    ├── STEP 4 ── Update blog.html
+    ├── STEP 3 ── Update blog.html
     │              (insert new featured card at top of grid)
     │              (card href: "blog/sota/sota-YYYY-MM-DD.html")
     │
-    ├── STEP 5 ── Update sitemap.xml
-    │              (add new URL with lastmod + priority 0.85)
+    ├── STEP 4 ── Update sitemap.xml
+    │              (add new URL with lastmod + priority 0.9)
     │
-    ├── STEP 6 ── Verify bilingual parity (FR count == EN count)
-    │              and check all arxiv links are present
+    ├── STEP 5 ── Verify bilingual parity (FR count == EN count)
+    │              and check all arxiv links present
     │              and verify ../../css/style.css path is correct
+    │              and 0 em dashes in prose sentences
+    │              and 0 duplicate arXiv IDs vs published digests
     │
-    └── STEP 7 ── Summary report (papers count, model found, parity OK)
+    ├── STEP 5.5 ─ Factual verification (NEW — post-writing)
+    │              For each paper-block: fetch arxiv.org/abs/XXXXXXX
+    │              and cross-check: title, authors, key metrics, institutions, date
+    │              Correct HTML on mismatch + add <!-- CORR: was X, actual Y -->
+    │              If fetch fails: add <!-- FETCH-FAIL --> + hedge summary wording
+    │
+    └── STEP 6 ── Update CLAUDE_BLOG_CONTEXT.md section 16
+                   (add new digest row + arXiv IDs to the published-papers registry)
 
 Monday morning
     │
     └── PSW: open file → review → git push ✅
 ```
-#### Summary:
-![Weekly SOTA ArXiv Blog Digest](./ndapli/sota-axiv-automation.png)
 
 ---
 
@@ -185,35 +207,59 @@ The prompt is the heart of the automation. It must be completely self-contained 
    → tells the agent WHERE your conventions are documented
    → includes the em dash rule: never "—" inside sentences
 
-## STEP 1 — ArXiv searches
-   → 7 targeted WebSearch queries for your research domains
+## STEP 1 — 10 permanent searches (7 ArXiv + 3 HuggingFace)
+   → targeted WebSearch queries for your research domains
    → selection criteria (relevance badges, paper count)
    → one extra WebSearch per paper for real author names
+   → ArXiv = priority #1, always executed every week
 
-## STEP 2 — HuggingFace trending
+## STEP 1.3 — Conference Radar (seasonal, ADDITIVE)
+   → check current month via `date +%m`
+   → add 2 targeted queries per active conference window:
+      ICLR (jan–may) · ACL/NAACL (apr–aug) · Interspeech (mar–sep)
+      EMNLP (jul–nov) · NeurIPS (may–dec)
+   → if accepted paper from these venues: tag with badge--conf in the paper-block
+   → ArXiv remains the primary source; this step only ADDS queries, never replaces
+
+## STEP 1.5 — HuggingFace trending
    → identify the notable open-source model release of the week
    → collect: name, license, sizes, context length, HF model IDs
 
-## STEP 3 — Generate HTML article
+## STEP 2 — Generate HTML article
    → write to blog/sota/sota-YYYY-MM-DD.html (dedicated subfolder)
    → relative paths use ../../ (two levels up): ../../css/style.css · ../../js/main.js
    → highlight.js loaded in <head>, initialized in <body>
-   → model-of-the-week section (if notable model found)
+   → model-of-the-week section (if notable model found — check section 16.3 for already-covered models)
    → enriched paper-block per paper: method + snippet + HF link + Wolof score
+   → badge--conf on confirmed conference papers
    → bilingual attributes on every visible text element
 
-## STEP 4 — Update blog.html
+## STEP 3 — Update blog.html
    → exact insertion point (after which HTML element)
    → exact card markup to use (copy your real card structure)
 
-## STEP 5 — Update sitemap.xml
+## STEP 4 — Update sitemap.xml
    → exact XML entry to insert
    → where to insert it
 
-## STEP 6 — Verification bash commands
+## STEP 5 — Verification bash commands
    → bilingual parity check (FR == EN count)
    → ../../css/style.css path check
    → arxiv link count check
+   → 0 em dashes in prose sentences
+   → no spurious badge--conf (only on confirmed accepted papers)
+   → verify 0 arXiv IDs overlap with section 16.2 of CLAUDE_BLOG_CONTEXT.md
+
+## STEP 5.5 — Factual verification (NEW)
+   → for each paper: fetch https://arxiv.org/abs/XXXXXXX
+   → compare title, authors, institutions, key metrics against what was written
+   → correct any mismatch in the HTML before finalizing
+   → if fetch fails: note it with an HTML comment and soften the wording
+
+## STEP 6 — Update CLAUDE_BLOG_CONTEXT.md section 16 (NEW)
+   → add new row to the digest index table (16.1)
+   → add new block of arXiv IDs to the exclusion list (16.2)
+   → add model of the week to the covered-models table (16.3)
 ```
 
 ### The bilingual parity rule
@@ -225,7 +271,7 @@ If your blog supports language switching, every text element in the generated ar
 <p data-fr="Texte en français"
    data-en="Text in English">Texte en français</p>
 
-<!-- Wrong — agent will self-correct in Step 6 -->
+<!-- Wrong — agent will self-correct in Step 5 -->
 <p>Texte en français</p>
 ```
 
@@ -238,7 +284,7 @@ en=$(grep -c 'data-en=' "$FILE")
 
 ### Paper block HTML structure (enriched)
 
-Each selected paper gets an enriched `.paper-block` component. The key additions: real authors from WebSearch, a mathematical method block, an optional Python snippet, optional HuggingFace links, and a Wolof applicability score.
+Each selected paper gets an enriched `.paper-block` component. The key additions compared to the minimal version: real authors from WebSearch, a mathematical method block, an optional Python snippet, optional HuggingFace links, and a Wolof applicability score.
 
 ```html
 <div class="paper-block">
@@ -346,12 +392,13 @@ The most common failure point is the agent inserting a card with the wrong HTML 
     </div>
     <h2 class="blog-card__title" data-fr="..." data-en="...">...</h2>
     <p class="blog-card__excerpt" data-fr="..." data-en="...">...</p>
+    <div class="blog-card__tags"><span>Tag</span></div>
     <a href="blog/sota/sota-YYYY-MM-DD.html" class="blog-card__link"
        data-fr="Lire le digest →" data-en="Read digest →">Lire le digest →</a>
 </article>
 ```
 
-> **Note on paths:** the article lives in `blog/sota/sota-YYYY-MM-DD.html` (two levels deep). Inside the article, all asset paths use `../../` (e.g., `../../css/style.css`). The card's `href` in `blog.html` is `blog/sota/sota-YYYY-MM-DD.html` (relative to site root).
+> **Note on paths:** the article lives in `blog/sota/sota-YYYY-MM-DD.html` but the card's `href` in `blog.html` is `blog/sota/sota-YYYY-MM-DD.html` (relative to the site root). Inside the article itself, all asset paths use `../../` (e.g., `../../css/style.css`).
 
 > **Lesson learned:** Don't describe the card structure in words. Paste the actual HTML. The agent copies it exactly and fills in the variables.
 
@@ -408,7 +455,7 @@ You receive an in-app notification when the task completes. This is the easiest 
 ```bash
 ls ~/Desktop/your-blog-repo/blog/sota/sota-*.html
 # Output: blog/sota/sota-2026-04-06.html  ← article was written
-# Output: (empty)                          ← task failed or hasn't run yet
+# Output: (empty)                         ← task failed or hasn't run yet
 ```
 
 ### Method 3 — git status
@@ -466,6 +513,7 @@ docs/arxiv-daily-*.md
 These are the conventions from `papasegawade.com`, adapt them for your own blog.
 
 ### CSS file
+All utility classes are in `css/style.css`, no inline `<style>` blocks in generated articles.
 
 Articles in `blog/sota/` are two levels deep, so all paths use `../../`:
 ```html
@@ -478,8 +526,6 @@ Articles in `blog/` (one level deep) use `../`:
 ```html
 <link rel="stylesheet" href="../css/style.css">
 ```
-
-All utility classes are in `css/style.css`. No inline `<style>` blocks in generated articles.
 
 ### Available CSS components (already in style.css)
 
@@ -502,6 +548,7 @@ All utility classes are in `css/style.css`. No inline `<style>` blocks in genera
 | `.badge--amber` | Relevance: transferable methodology |
 | `.badge--gold` | Relevance: general LLM foundation |
 | `.badge--blue` | Domain tag (LLM, SPEECH, NLP, ML) |
+| `.badge--conf` | Conference badge (ACL 2026, Interspeech 2026, etc.) — only for confirmed accepted papers |
 | `.stat-grid` | 3-column KPI card grid |
 | `.lang-hint` | Bilingual notice banner |
 
@@ -518,7 +565,200 @@ The default language (French) is set on `<html data-lang="fr">`. JavaScript in `
 
 ---
 
-## 12. Customizing for Your Own Blog
+## 11b. Conference Radar — Seasonal Coverage
+
+The weekly digest covers ArXiv continuously, but the most impactful NLP and speech papers are often accepted at major venues before their preprint appears. The Conference Radar ensures those papers are not missed by adding targeted queries during the period when accepted preprints are most likely to appear on ArXiv (camera-ready period and conference week).
+
+**Design principle:** ArXiv = source #1, always. The conference radar is purely additive. It adds 2 queries per active conference, never replaces the 10 permanent searches.
+
+### Active windows per conference
+
+| Conference | Active window | Peak preprint period | Focus for low-resource NLP |
+|------------|--------------|---------------------|---------------------------|
+| **ICLR** | January → May | April–May (conf week) | Efficient fine-tuning, adapters, multilingual learning |
+| **ACL / NAACL** | April → August | June–August (conf weeks) | African NLP tracks, low-resource NLP, cross-lingual transfer |
+| **Interspeech** | March → September | August–September (conf week) | ASR/TTS low-resource, speech code-switching, African speech |
+| **EMNLP** | July → November | October–November (conf week) | Multilingual NLP, low-resource, African languages |
+| **NeurIPS** | May → December | November–December (conf week) | Efficient ML, multilingual LLMs, low-resource learning |
+
+### Queries per conference (replace YEAR with current year)
+
+**ICLR:**
+```
+site:arxiv.org "ICLR YEAR" "low-resource" multilingual language efficient
+site:arxiv.org "ICLR YEAR" speech OR "African languages" adapter fine-tuning
+```
+
+**ACL / NAACL:**
+```
+site:arxiv.org "ACL YEAR" OR "NAACL YEAR" "African languages" OR "Wolof" NLP
+site:arxiv.org "ACL YEAR" "low-resource" speech multilingual cross-lingual
+```
+
+**Interspeech:**
+```
+site:arxiv.org "Interspeech YEAR" "low-resource" speech ASR TTS African
+site:arxiv.org "Interspeech YEAR" code-switching multilingual speech
+```
+
+**EMNLP:**
+```
+site:arxiv.org "EMNLP YEAR" "African languages" "low-resource" NLP
+site:arxiv.org "EMNLP YEAR" multilingual speech code-switching
+```
+
+**NeurIPS:**
+```
+site:arxiv.org "NeurIPS YEAR" "low-resource" multilingual OR African language
+site:arxiv.org "NeurIPS YEAR" efficient "language model" speech OR adapter
+```
+
+### Conference badge in paper-block
+
+When a paper is identified as accepted at one of these venues, add `badge--conf` alongside the existing relevance and domain badges:
+
+```html
+<div class="paper-block__header">
+    <span class="badge badge--green">🟢 DIRECT IMPACT</span>
+    <span class="badge badge--blue">SPEECH</span>
+    <span class="badge badge--conf">ACL 2026</span>  <!-- only if confirmed accepted -->
+    <span class="paper-block__wolof">Wolof ★★★★☆</span>
+</div>
+```
+
+**Rule:** never add `badge--conf` if acceptance is not confirmed. An ArXiv preprint mentioning "submitted to ACL" is not the same as "accepted at ACL". Only use the badge when the paper explicitly states acceptance.
+
+---
+
+## 12. Anti-Duplicate System — Tracking Published Papers
+
+### The problem
+
+Without memory between runs, an automated agent has no way to know which papers it already covered in previous weeks. Left unchecked, the same high-quality paper will appear in two or three consecutive digests — it stays at the top of search results because it is still recent and relevant. This is the kind of silent quality problem that erodes reader trust without anyone noticing immediately.
+
+The issue is compounded by the seasonal conference radar: a paper flagged as "Interspeech 2026 accepted" will keep showing up in speech + low-resource searches for months.
+
+### The solution: a published-papers registry in CLAUDE_BLOG_CONTEXT.md
+
+The fix is to maintain a persistent, human-readable registry of every arXiv ID already published, directly in `CLAUDE_BLOG_CONTEXT.md`. Since the agent reads this file at the start of every run (STEP 0), it sees the exclusion list before it selects any paper.
+
+The registry lives in **section 16** of `CLAUDE_BLOG_CONTEXT.md` and has three parts:
+
+**16.1 — Digest index** (one row per digest, for human reference):
+
+```markdown
+| File | Date | Week | Summary |
+|------|------|------|---------|
+| blog/sota/sota-2026-04-05.html | 2026-04-05 | Week 14 | Thiomi Dataset, AfrIFact, MzansiLM… |
+| blog/sota/sota-2026-04-12.html | 2026-04-12 | Week 15 | Senegalese NLP, LoASR-Bench, Budget-Xfer… |
+```
+
+**16.2 — Exclusion list** (arXiv IDs, one per line, grouped by digest):
+
+```
+# sota-2026-04-05 (Week 14)
+2603.29244  The Thiomi Dataset
+2604.00706  AfrIFact
+...
+
+# sota-2026-04-12 (Week 15)
+2601.09716  Opportunities and Challenges of NLP for Senegalese Languages
+...
+```
+
+**16.3 — Models already covered** (prevents repeating the model of the week):
+
+```markdown
+| Digest | Model | Organisation |
+|--------|-------|--------------|
+| 2026-04-12 | Qwen3-ASR-1.7B | Alibaba Qwen |
+| 2026-04-20 | Canary-Qwen-2.5B | NVIDIA NeMo |
+```
+
+### How the agent uses the registry
+
+The prompt instructs the agent to, in STEP 0, extract the full ID list from section 16.2 and treat it as a hard exclusion filter during paper selection (STEP 1). Any candidate paper whose ID matches an entry in the list is discarded immediately, regardless of how relevant it looks in search results.
+
+At the end of each run (STEP 6), the agent adds the new digest's IDs to the registry, so the next week's run has an up-to-date exclusion list.
+
+### Why this approach rather than database or external state
+
+The registry lives in plain Markdown inside the repo for three reasons. First, the agent can read it as part of its normal file-reading workflow with no extra tooling. Second, it is human-readable and human-editable: you can manually remove an ID if you want to revisit a paper in a future digest. Third, it is version-controlled with the rest of the blog, so you have a complete audit trail of what was published and when.
+
+### Maintenance rule
+
+After each `git push` of a new digest, verify that the CLAUDE_BLOG_CONTEXT.md update was included in the commit. The three files that should always move together are:
+
+```bash
+git add blog/sota/sota-YYYY-MM-DD.html  # new article
+git add blog.html                        # new card
+git add sitemap.xml                      # new URL
+git add CLAUDE_BLOG_CONTEXT.md           # updated registry
+```
+
+---
+
+## 13. Factual Verification — STEP 5.5
+
+### The problem
+
+Web search results — even from Google with site:arxiv.org — frequently return imprecise summaries. The result snippet may truncate an author list, misquote a WER figure, confuse two papers with similar titles, or describe a 2024 result as if it were the 2026 one. When the agent relies on search snippets alone to write paper summaries, these errors propagate silently into the published digest.
+
+Common failure modes observed in practice:
+
+- A WER of 3.24% reported as 4.5% because the snippet described an earlier checkpoint
+- An author listed with the wrong institution because two papers from the same group had similar titles
+- A corpus size of "601,000 annotations" summarized as "600 hours of audio" (confusing text and speech data)
+- A September 2025 preprint described as a 2026 publication because the arxiv ID starts with `2509`
+
+These errors are small individually but they accumulate and undermine the digest's credibility as a research reference.
+
+### The solution: fetch the arxiv abstract page for every selected paper
+
+After the article is written but before it is finalized, STEP 5.5 fetches the official arxiv abstract page for each paper and compares it against what was written:
+
+```
+fetch("https://arxiv.org/abs/XXXXXXX")
+```
+
+Five verification points per paper:
+
+| Point | What is checked | Action on mismatch |
+|-------|-----------------|--------------------|
+| **Exact title** | Title in `<h3>` matches the arxiv page title character for character | Correct `<h3>` and `<a>` in the paper-block |
+| **Real authors** | All listed authors appear in the paper's author list | Correct `paper-block__authors` |
+| **Key figures** | WER, BLEU score, parameter count, corpus size, benchmark result match the abstract | Correct summary and method block |
+| **Institutions** | Author affiliations are correct | Correct the author line |
+| **Year / ID coherence** | Paper is from 2025 or 2026, ID format `YYMM.XXXXX` matches claimed year | Flag if the ID suggests a different year than stated |
+
+### What happens when a fetch fails
+
+Some arxiv pages are temporarily unreachable from the agent's network. In that case, the agent:
+
+1. Adds an HTML comment: `<!-- FETCH-FAIL: arxiv.org/abs/XXXXXXX — not verified -->`
+2. Reformulates the summary with hedged language: "according to the available abstract…" instead of assertive claims
+3. Flags the paper for manual verification in the Monday morning review
+
+This is the correct tradeoff: better to publish a slightly hedged summary than to silently propagate an incorrect figure.
+
+### Cost of this step
+
+Five fetches per digest, one per selected paper. Each fetch takes 2–5 seconds. Total overhead: under 30 seconds per run, added to a process that already runs for several minutes. The tradeoff is strongly in favor of verification: one corrected WER figure prevents a researcher from citing an incorrect result.
+
+### Correction traceability
+
+When a correction is made, the agent adds an HTML comment directly in the paper-block:
+
+```html
+<!-- CORR: authors were "Sy et al. (INRIA)" — actual: "Sy et al. (LORIA)" -->
+<!-- CORR: corpus size was "860 hours" — actual: "860 hours filtered from 1.4TB raw" -->
+```
+
+These comments are invisible to readers but visible in the source, creating an audit trail of what was corrected and why.
+
+---
+
+## 14. Customizing for Your Own Blog
 
 ### Adapt the ArXiv search queries
 
@@ -549,10 +789,10 @@ The generated article template in the prompt must match your blog's `<head>`, na
 
 ### Adapt the file naming convention
 
-The prompt uses `blog/sota/sota-YYYY-MM-DD.html`. Change this to match your blog's convention:
-- `blog/digest/digest-YYYY-MM-DD.html`
-- `blog/weekly/weekly-YYYY-WW.html`
-- `blog/arxiv/arxiv-wNN-YYYY.html`
+The prompt uses `sota-YYYY-MM-DD.html`. Change this to match your blog's convention:
+- `digest-YYYY-MM-DD.html`
+- `weekly-YYYY-WW.html`
+- `arxiv-wNN-YYYY.html`
 
 ### Monolingual blogs
 
@@ -560,7 +800,7 @@ If your blog is monolingual, remove all `data-fr`/`data-en` attributes from the 
 
 ---
 
-## 13. Full Pipeline Summary
+## 15. Full Pipeline Summary
 
 ```
 Every week, automatically:
@@ -611,7 +851,17 @@ The agent's default is to write "Author et al." when it can't fetch the ArXiv pa
 **8. Enrich, don't just summarize.**
 A digest is most useful to researchers when it goes beyond the abstract. The per-paper mathematical method block (3 lines of intuition), the Wolof applicability score, and the Python snippet are what differentiate this digest from a simple RSS feed. Include all three in your paper-block template and your prompt.
 
+**9. Add a seasonal conference radar — ArXiv stays #1.**
+ArXiv covers most high-quality work continuously, but accepted conference papers often appear as preprints only during the camera-ready and conference period. A seasonal radar (ACL, Interspeech, NeurIPS, ICLR) adds 2–4 targeted queries per active window, capturing papers that pure ArXiv monitoring would miss. The radar is additive: it never replaces the permanent searches, only supplements them. Keep the conference windows updated each year as submission and conference dates shift.
+
+**10. Maintain a persistent published-papers registry — duplicates are silent quality killers.**
+After 3–4 weeks of running, the agent will start rediscovering papers it already covered. High-quality, recent papers stay at the top of search results for months. Without an exclusion list, the same paper appears in multiple digests — readers notice even if you don't. The fix is a plain-Markdown registry of arXiv IDs in `CLAUDE_BLOG_CONTEXT.md` (section 16), updated by the agent at the end of each run. The agent reads it before selecting papers, the list grows automatically, and you get a complete audit trail. The four files that must always be committed together are: the new article, `blog.html`, `sitemap.xml`, and `CLAUDE_BLOG_CONTEXT.md`.
+
+**11. Add factual verification — search snippets lie.**
+Web search result summaries frequently misquote key figures (WER, parameter counts, corpus sizes), truncate author lists, or describe an older result as a new one. These errors are small but they accumulate and undermine the digest's credibility as a research reference. STEP 5.5 fetches the official arxiv abstract for each selected paper after the article is written, compares it against the draft, and corrects any mismatch before the file is saved. The cost is under 30 seconds per run. The benefit is a digest that researchers can actually cite. When a fetch fails, the agent hedges its wording and marks the paper with `<!-- FETCH-FAIL -->` for manual review on Monday morning.
+
 ---
 
-*Built and designed by [Papa Séga WADE](https://papasegawade.com), April 2026.*
+*Built and documented by [Papa Séga WADE](https://papasegawade.com), April 2026.*
 *Research domains: NLP · Speech · Low-resource African languages · LLMs · Code-switching*
+*Last updated: 2026-04-27 — added anti-duplicate registry (section 16) and factual verification (STEP 5.5)*
