@@ -96,10 +96,12 @@ Cowork Scheduled Task: sota-arxiv-weekly-digest
     │              and verify ../../css/style.css path is correct
     │              and 0 em dashes in prose sentences
     │              and 0 duplicate arXiv IDs vs published digests
+    │              and 0 papers with delta_months > 6 (unless AGE-EXCEPTION marker present)
     │
-    ├── STEP 5.5 ─ Factual verification (NEW — post-writing)
+    ├── STEP 5.5 ─ Factual verification + freshness cutoff (NEW — post-writing)
     │              For each paper-block: fetch arxiv.org/abs/XXXXXXX
     │              and cross-check: title, authors, key metrics, institutions, date
+    │              and verify YYMM cutoff (delta_months <= 6 or AGE-EXCEPTION)
     │              Correct HTML on mismatch + add <!-- CORR: was X, actual Y -->
     │              If fetch fails: add <!-- FETCH-FAIL --> + hedge summary wording
     │
@@ -250,9 +252,10 @@ The prompt is the heart of the automation. It must be completely self-contained 
    → no spurious badge--conf (only on confirmed accepted papers)
    → verify 0 arXiv IDs overlap with section 16.2 of CLAUDE_BLOG_CONTEXT.md
 
-## STEP 5.5 — Factual verification (NEW)
+## STEP 5.5 — Factual verification + freshness cutoff (NEW)
    → for each paper: fetch https://arxiv.org/abs/XXXXXXX
    → compare title, authors, institutions, key metrics against what was written
+   → apply YYMM freshness rule: reject if delta_months > 6 unless AGE-EXCEPTION marker present
    → correct any mismatch in the HTML before finalizing
    → if fetch fails: note it with an HTML comment and soften the wording
 
@@ -729,7 +732,36 @@ Five verification points per paper:
 | **Real authors** | All listed authors appear in the paper's author list | Correct `paper-block__authors` |
 | **Key figures** | WER, BLEU score, parameter count, corpus size, benchmark result match the abstract | Correct summary and method block |
 | **Institutions** | Author affiliations are correct | Correct the author line |
-| **Year / ID coherence** | Paper is from 2025 or 2026, ID format `YYMM.XXXXX` matches claimed year | Flag if the ID suggests a different year than stated |
+| **Year / ID coherence** | Paper is from 2025 or 2026, ID format `YYMM.XXXXX` matches claimed year | Flag if the ID suggests a different year than stated, apply the freshness cutoff (next subsection) |
+
+### Freshness cutoff (hardened rule, NEW)
+
+The factual verification step exposed a recurring issue: search results frequently surface papers that are 6 to 18 months old, simply because they remain well-cited and stay at the top of arXiv ranking. Including them in a "weekly SOTA digest" misleads readers who expect recent work.
+
+The rule, codified in `CLAUDE_BLOG_CONTEXT.md` section 13.4d, is mechanical:
+
+1. Extract the `YYMM` prefix from each candidate arXiv ID (4 digits before the dot).
+2. Compute `delta_months = (current_year * 12 + current_month) - (paper_year * 12 + paper_month)`.
+3. If `delta_months > 6` and no exception applies, reject the paper from the shortlist and log the rejection in the final summary report.
+
+Three exceptions are tolerated, each requiring an explicit HTML comment marker inside the `paper-block`:
+
+| Case | HTML marker |
+|------|-------------|
+| Foundational model release (Llama, Whisper, NLLB, etc.) | `<!-- AGE-EXCEPTION: foundational-model -->` |
+| Paper requalified as SOTA in a recent publication | `<!-- AGE-EXCEPTION: cited-as-SOTA-in PAPER_ID -->` |
+| Reference benchmark or dataset still actively used | `<!-- AGE-EXCEPTION: reference-benchmark -->` |
+
+Worked example for an April 2026 run (`current = 2604`):
+
+| arXiv ID | YYMM | delta | Decision |
+|----------|------|-------|----------|
+| `2604.20996` | 2604 | 0 | Accept |
+| `2602.09373` | 2602 | 2 | Accept |
+| `2509.21718` | 2509 | 7 | Reject (or require AGE-EXCEPTION) |
+| `2504.06536` | 2504 | 12 | Reject (or require AGE-EXCEPTION) |
+
+This rule alone would have flagged three of the five papers in the 2026-04-27 digest as out-of-window, prompting either replacement with fresher candidates or explicit foundational-model justification.
 
 ### What happens when a fetch fails
 
@@ -860,8 +892,11 @@ After 3–4 weeks of running, the agent will start rediscovering papers it alrea
 **11. Add factual verification — search snippets lie.**
 Web search result summaries frequently misquote key figures (WER, parameter counts, corpus sizes), truncate author lists, or describe an older result as a new one. These errors are small but they accumulate and undermine the digest's credibility as a research reference. STEP 5.5 fetches the official arxiv abstract for each selected paper after the article is written, compares it against the draft, and corrects any mismatch before the file is saved. The cost is under 30 seconds per run. The benefit is a digest that researchers can actually cite. When a fetch fails, the agent hedges its wording and marks the paper with `<!-- FETCH-FAIL -->` for manual review on Monday morning.
 
+**12. Enforce a freshness cutoff — old papers stay #1 in search results.**
+Search engines rank by relevance and citations, not by publication date. A high-quality 12-month-old paper will keep surfacing in `arxiv low-resource speech 2025 2026` queries long after it should be considered "this week's news." A weekly SOTA digest that includes 6-month-old papers loses credibility with researchers who expect actual recency. The mechanical fix is a `YYMM` cutoff: extract the month-year prefix from each arXiv ID, compute `delta_months` against the current month, and reject anything beyond 6 months unless an explicit `AGE-EXCEPTION` marker applies (foundational model, requalified SOTA, reference benchmark). The rule is implemented in `CLAUDE_BLOG_CONTEXT.md` section 13.4d and runs automatically inside STEP 5.5. The benefit: every `Rejected: PAPER_ID delta=N` line in the run report is a paper the reader would have flagged anyway, caught before publication.
+
 ---
 
 *Built and documented by [Papa Séga WADE](https://papasegawade.com), April 2026.*
 *Research domains: NLP · Speech · Low-resource African languages · LLMs · Code-switching*
-*Last updated: 2026-04-27 — added anti-duplicate registry (section 16) and factual verification (STEP 5.5)*
+*Last updated: 2026-04-27 — added anti-duplicate registry (section 16), factual verification (STEP 5.5), and YYMM freshness cutoff (6-month rule)*
